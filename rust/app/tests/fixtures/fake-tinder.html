@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8"><body>
+<aside>Matches Mensagens 96 curtidas</aside>
+<div class="recsCardboard__cards" id="cards"></div>
+<button id="nope" disabled>NÃO</button><button disabled>SUPER LIKE</button><button id="like" disabled>CURTIR</button>
+<div id="dlg"></div>
+<div role="dialog" aria-modal="true" style="visibility:hidden;height:300px"><div></div></div><!-- igual ao do Tinder real -->
+<script>
+// Tinder falso, com a estrutura do real: botões NÃO/CURTIR desabilitados enquanto o "radar" carrega (?radar=ms),
+// carta do topo em .recsCardboard__cards > [aria-hidden=false] (troca via requestAnimationFrame).
+// ?limit=N likes, match na 3ª curtida, popup no 5º swipe, ?freeze=1 ignora swipes,
+// ?persist=1 o limite sobrevive a recarregar a página, ?keys=1 sem botões (só teclado).
+const q = new URLSearchParams(location.search), limit = +q.get('limit') || 5, persist = q.get('persist');
+let i = 0, likes = persist ? +localStorage.likes || 0 : 0; window.log = [];
+const $ = id => document.getElementById(id);
+const card = () => requestAnimationFrame(() =>
+  $('cards').innerHTML = `<div aria-hidden="true">Pessoa ${i - 1}</div><div aria-hidden="false">Pessoa ${i}\n25\nAbrir perfil\n${q.get('bio') || ''}</div>`); // ?bio= texto do perfil
+const dialog = t => $('dlg').innerHTML = t ? `<div role="dialog">${t}</div>` : '';
+const offer = 'TINDER PLUS <h1>Curtidas ilimitadas. Curta quantas vezes quiser.</h1><h2>Escolha um plano</h2><p>1 semana R$ 11,50/semana</p><button onclick="window.purchased = true">Continuar</button>';
+window.purchased = false;
+if (q.get('offer') === 'initial') dialog(offer);
+if (q.get('keys')) { $('nope').remove(); $('like').remove() }
+setTimeout(() => { card(); document.querySelectorAll('button').forEach(b => b.disabled = false) }, +q.get('radar') || 300);
+
+function act(key) {
+  if (key === 'Escape') return dialog('');
+  if (q.get('freeze') || document.querySelector('#dlg [role=dialog]')) return;
+  if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
+  if (key === 'ArrowRight' && likes >= limit) return dialog(q.get('offer') ? offer : 'Você ficou sem Likes! Volte em 11:59:00');
+  log.push(key); i++;
+  if (key === 'ArrowRight' && ++likes === 3) dialog("It's a Match!");
+  if (persist) localStorage.likes = likes;
+  if (i === 5) dialog('Adicionar à tela inicial?');
+  card();
+}
+addEventListener('keydown', e => act(e.key));
+$('nope')?.addEventListener('click', () => act('ArrowLeft'));
+$('like')?.addEventListener('click', () => act('ArrowRight'));
+</script>

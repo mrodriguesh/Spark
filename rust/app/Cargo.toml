@@ -1,0 +1,39 @@
+[package]
+name = "spark"
+version = "2.0.0"
+edition = "2024"
+publish = false
+description = "Spark: automação do Tinder para Windows (Rust, WebView2)"
+
+[[bin]]
+name = "Spark"
+path = "src/main.rs"
+
+[features]
+#test-only control port, fake Tinder page, clock offset. Never in release builds.
+test-hooks = ["dep:png"]
+
+[dependencies]
+wry = "=0.57.3"
+tao = "=0.37.3"
+webview2-com = "=0.39.1"
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_Com", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell", "Win32_System_Threading", "Win32_System_Registry", "Win32_System_DataExchange", "Win32_System_Power", "Win32_System_RemoteDesktop", "UI_Notifications", "Data_Xml_Dom", "Win32_System_Environment", "Win32_Storage_FileSystem", "Win32_Security", "Foundation", "Win32_Storage_Xps"] }
+windows-core = "0.62"
+tray-icon = "=0.26.1"
+muda = "=0.21.2"
+serde_json = { version = "1", features = ["preserve_order"] }
+tokio = { version = "1", features = ["rt", "time", "macros", "sync", "process", "io-util"] }
+chrono = "0.4"
+winreg = "0.56"
+png = { version = "0.17", optional = true }
+spark-patterns = { path = "../units/patterns" }
+spark-main-pure = { path = "../units/main-pure" }
+spark-classify = { path = "../units/classify" }
+spark-store = { path = "../units/store" }
+spark-scheduler = { path = "../units/scheduler" }
+
+[build-dependencies]
+embed-resource = "3"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "time", "macros", "sync", "test-util"] }

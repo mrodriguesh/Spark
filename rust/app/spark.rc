@@ -1,0 +1,24 @@
+// Spark.exe resources: icon at index 0 (installer shortcuts, taskbar) and the version block the installer shows.
+1 ICON "assets/icon.ico"
+1 VERSIONINFO
+FILEVERSION 2,0,0,0
+PRODUCTVERSION 2,0,0,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904b0"
+    BEGIN
+      VALUE "CompanyName", "Matheus"
+      VALUE "FileDescription", "Spark"
+      VALUE "FileVersion", "2.0.0"
+      VALUE "InternalName", "Spark"
+      VALUE "LegalCopyright", "Copyright \xa9 2026 Matheus"
+      VALUE "ProductName", "Spark"
+      VALUE "ProductVersion", "2.0.0.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

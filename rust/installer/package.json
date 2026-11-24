@@ -1,0 +1,35 @@
+{
+  "name": "spark",
+  "productName": "Spark",
+  "version": "2.0.0",
+  "description": "Mantém seus likes do Tinder sempre em uso.",
+  "author": "Matheus",
+  "private": true,
+  "scripts": {
+    "dist": "bash build.sh"
+  },
+  "build": {
+    "appId": "app.spark.match",
+    "productName": "Spark",
+    "win": {
+      "icon": "../app/assets/icon.ico",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Spark",
+      "installerIcon": "../app/assets/icon.ico",
+      "uninstallerIcon": "../app/assets/icon.ico",
+      "runAfterFinish": true
+    },
+    "electronVersion": "38.8.6"
+  },
+  "devDependencies": {
+    "electron-builder": "^26.15.3"
+  }
+}

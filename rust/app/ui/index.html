@@ -1,0 +1,2362 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<title>Spark</title>
+<style>
+  :root {
+    color-scheme: dark;
+
+    /* Paleta Neon Cabaré (equilibrada: fundo veludo escuro profundo + acentos néon nítidos sem exagero) */
+    --bg-void: #07010A;
+    --bg: #0B0312;
+    --bg-sidebar: #11041A;
+    --surface-1: #180724;
+    --surface-2: #210B30;
+    --surface-3: #2D1040;
+
+    --line: rgba(235, 110, 195, 0.14);
+    --line-strong: rgba(245, 120, 200, 0.24);
+    --line-input: #845482;
+    --line-neon: rgba(255, 42, 149, 0.65);
+
+    --text: #FAF0F7;
+    --text-2: #DEC2D6;
+    --text-3: #A6829E;
+    --text-disabled: #6E526A;
+
+    --crimson: #FF1E62;
+    --crimson-hi: #FF6B9B;
+    --pink: #FF2E9A;
+    --pink-hi: #FF7AC8;
+    --violet: #BC42FF;
+    --violet-hi: #DA96FF;
+
+    /* estados */
+    --success: #4BE3B0;
+    --warning: #FFC26B;
+    --error: #FF4D73;
+    --idle: #9A6B8C;
+
+    --grad-neon: linear-gradient(135deg, #FF1E62 0%, #FF2E9A 52%, #BC42FF 100%);
+    --grad-action: linear-gradient(135deg, #E6195B 0%, #C81D84 52%, #881FD1 100%);
+    --grad-action-pressed: linear-gradient(135deg, #BF134B 0%, #6E15AC 100%);
+
+    --glow-pink-sm: 0 0 0 1px rgba(255, 61, 168, 0.48), 0 0 12px rgba(255, 30, 110, 0.28);
+    --glow-pink-lg: 0 0 0 1px rgba(255, 92, 180, 0.68), 0 0 22px rgba(255, 30, 110, 0.38), 0 0 48px rgba(188, 66, 255, 0.18);
+    --glow-violet-sm: 0 0 0 1px rgba(188, 66, 255, 0.45), 0 0 12px rgba(188, 66, 255, 0.26);
+    --glow-violet-lg: 0 0 0 1px rgba(218, 150, 255, 0.65), 0 0 22px rgba(188, 66, 255, 0.34), 0 0 48px rgba(255, 30, 110, 0.15);
+
+    /* nomes antigos ainda usados pelas regras abaixo */
+    --accent: var(--crimson);
+    --accent-light: var(--pink-hi);
+    --accent-grad: var(--grad-action);
+    --accent-grad-hover: var(--grad-action);
+    --sidebar-bg: var(--bg-sidebar);
+    --surface-hover: rgba(255, 46, 154, 0.05);
+    --surface-card: var(--surface-1);
+    --line-active: rgba(255, 46, 154, 0.45);
+    --amber: var(--warning);
+    --red: var(--error);
+    --gray: var(--idle);
+
+    /* Controles */
+    --focus: 0 0 0 2px var(--bg-sidebar), 0 0 0 4px var(--pink-hi);
+    --r: 20px;
+    --r-sm: 10px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* resposta de UI: começa rápido */
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* movimento na tela (indicador das abas) */
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; width: 100%; }
+
+  body {
+    background:
+      radial-gradient(640px circle at 12% 14%, rgba(255, 30, 98, 0.22), transparent 62%),
+      radial-gradient(560px circle at 32% 52%, rgba(255, 46, 154, 0.16), transparent 64%),
+      radial-gradient(680px circle at 22% 88%, rgba(188, 66, 255, 0.22), transparent 65%),
+      radial-gradient(760px circle at 78% 50%, rgba(255, 30, 98, 0.14), transparent 68%),
+      var(--sidebar-bg);
+    background-size: 155% 155%, 165% 165%, 155% 155%, 145% 145%, 100% 100%;
+    animation: cabaret-aura 16s ease-in-out infinite alternate;
+    color: var(--text);
+    overflow: hidden;
+    user-select: none;
+    font: 13px/1.45 var(--font);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: grid;
+    grid-template-columns: 390px 1fr;
+    grid-template-rows: minmax(0, 1fr); /* sem isto o #sparkCursor (filho do body) abre uma 2ª linha que divide a altura livre e deixa uma faixa vazia embaixo */
+    position: relative;
+  }
+
+  /* Textura de fundo Cabaré Premium ultra-suave (Seda Aveludada + Damasco Curvo Sutil) com 50% de transparência */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image:
+      /* 1. Micro-grão finíssimo de veludo de seda */
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.92  0 0 0 0 0.28  0 0 0 0 0.62  0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+      /* 2. Damasco de seda curvo & acolchoado suave de cabaré (baixo contraste, sem linhas duras) */
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='50%25' r='55%25'%3E%3Cstop offset='0%25' stop-color='%23ff2e9a' stop-opacity='0.07'/%3E%3Cstop offset='65%25' stop-color='%23881862' stop-opacity='0.025'/%3E%3Cstop offset='100%25' stop-color='%2305000a' stop-opacity='0.12'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='72' height='72' fill='url(%23g)'/%3E%3Cpath d='M36 0 Q36 36 72 36 Q36 36 36 72 Q36 36 0 36 Q36 36 36 0Z' fill='none' stroke='%23ff66be' stroke-width='0.6' stroke-opacity='0.085'/%3E%3Cpath d='M0 0 Q36 36 72 0 M0 72 Q36 36 72 72' fill='none' stroke='%23bc42ff' stroke-width='0.5' stroke-opacity='0.055'/%3E%3Ccircle cx='36' cy='36' r='0.9' fill='%23ff85ca' fill-opacity='0.11'/%3E%3Ccircle cx='0' cy='0' r='0.9' fill='%23ff85ca' fill-opacity='0.09'/%3E%3Ccircle cx='72' cy='0' r='0.9' fill='%23ff85ca' fill-opacity='0.09'/%3E%3Ccircle cx='0' cy='72' r='0.9' fill='%23ff85ca' fill-opacity='0.09'/%3E%3Ccircle cx='72' cy='72' r='0.9' fill='%23ff85ca' fill-opacity='0.09'/%3E%3C/svg%3E"),
+      /* 3. Ondulação longa e sutil de veludo */
+      repeating-linear-gradient(
+        115deg,
+        rgba(255, 46, 154, 0.022) 0px,
+        transparent 36px,
+        rgba(4, 0, 10, 0.08) 72px,
+        transparent 108px
+      );
+    background-size: 160px 160px, 72px 72px, 108px 108px;
+  }
+
+  button, input, select, a {
+    -webkit-app-region: no-drag;
+    font: inherit;
+    color: inherit;
+    outline: none;
+  }
+  :focus-visible { outline: none; } /* o anel de foco é o --focus (box-shadow) em cada controle */
+  /* movimento reduzido: sem deslocamento nem animação contínua; cor e opacidade seguem suaves */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition-property: opacity, color, background-color, border-color, box-shadow, filter !important; }
+  }
+
+  /* entrada ao abrir o app (uma vez): os blocos da lateral sobem em cascata curta */
+  @keyframes entrar { from { opacity: 0; transform: translateY(6px); } }
+  aside > * { animation: entrar 0.32s var(--ease-out) backwards; }
+  aside > :nth-child(2) { animation-delay: 40ms; }
+  aside > :nth-child(3) { animation-delay: 80ms; }
+  aside > :nth-child(4) { animation-delay: 120ms; }
+  body:not(.pronto) aside > .tab-panel { animation-delay: 160ms; } /* depois da abertura, trocar de aba entra sem espera */
+  body.blurred aside > * { animation-play-state: running !important; } /* entra mesmo com a janela sem foco */
+  aside[data-teclado] > .tab-panel { animation: none; } /* troca pelo teclado: instantânea */
+
+  /* Controles da janela: cápsula de vidro com três "gemas" neon.
+     Em repouso cada gema é um ponto luminoso; ao passar o mouse ela cresce, revelando o ícone (só transform/opacity). */
+  .lights {
+    justify-self: start; /* o grid do topo estica a célula; a cápsula tem o tamanho dos botões */
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    -webkit-app-region: no-drag !important;
+    position: relative;
+    z-index: 50;
+    padding: 2px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(64, 20, 66, 0.5), rgba(22, 6, 34, 0.72));
+    border: 1px solid var(--line-strong);
+    box-shadow: inset 0 1px 0 rgba(255, 200, 230, 0.08), 0 2px 8px rgba(4, 0, 10, 0.45);
+    transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  }
+  .lights:hover { border-color: rgba(255, 122, 200, 0.45); }
+  .lights button {
+    --g-hi: #FF88AC; --g: var(--crimson); --g-lo: #A80838; --g-glow: rgba(255, 30, 98, 0.7);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    position: relative;
+    -webkit-app-region: no-drag !important;
+    pointer-events: auto !important;
+    transition: transform 0.16s var(--ease-out);
+  }
+  .lights .min { --g-hi: #FFA4D8; --g: var(--pink); --g-lo: #A41062; --g-glow: rgba(255, 46, 154, 0.68); }
+  .lights .zoom { --g-hi: #EFC2FF; --g: var(--violet); --g-lo: #7816B0; --g-glow: rgba(188, 66, 255, 0.65); }
+  .lights button::before { /* a gema */
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, var(--g-hi), var(--g) 58%, var(--g-lo));
+    box-shadow: 0 0 7px var(--g-glow), inset 0 0 0 0.5px rgba(255, 255, 255, 0.3);
+    transition: transform 0.18s var(--ease-out), box-shadow 0.18s ease-out, filter 0.2s;
+  }
+  .lights button:hover::before { transform: scale(1.75); box-shadow: 0 0 14px var(--g-glow), inset 0 0 0 0.5px rgba(255, 255, 255, 0.45); }
+  .lights button:active { transform: scale(0.92); transition-duration: 0.1s; }
+  .lights svg {
+    position: relative;
+    width: 10px;
+    height: 10px;
+    opacity: 0;
+    stroke: rgba(22, 4, 28, 0.92);
+    stroke-width: 1.7;
+    fill: none;
+    stroke-linecap: round;
+    transition: opacity 0.12s ease-out;
+  }
+  .lights .zoom svg { fill: rgba(22, 4, 28, 0.88); stroke: none; }
+  .lights button:hover svg, .lights button:focus-visible svg { opacity: 1; }
+  .lights button:focus-visible { box-shadow: var(--focus); }
+  /* janela sem foco: gemas apagadas, voltam a acender com o mouse em cima */
+  body.blurred .lights button::before { filter: grayscale(0.9) brightness(0.65); box-shadow: none; }
+  body.blurred .lights:hover button::before { filter: none; box-shadow: 0 0 7px var(--g-glow); }
+
+  /* 09 · Cursor Personalizado (Ponto + Anel com Inércia) */
+  html.js-cursor-on aside, html.js-cursor-on aside * {
+    cursor: none !important;
+  }
+  .js-cursor-ponto {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #FF2E9A;
+    box-shadow: 0 0 10px #FF1E62, 0 0 4px #ffffff;
+    pointer-events: none !important;
+    opacity: 0;
+    z-index: 99999;
+    transform: translate(-100px, -100px);
+    will-change: transform;
+    transition: opacity 0.25s ease, background 0.2s, box-shadow 0.2s;
+  }
+  .js-cursor-anel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 46, 154, 0.68);
+    box-shadow: 0 0 12px rgba(255, 30, 98, 0.28);
+    pointer-events: none !important;
+    opacity: 0;
+    z-index: 99998;
+    translate: -100px -100px; /* propriedade própria: a escala (scale) é aplicada depois dela, em torno do centro do anel */
+    will-change: translate, scale;
+    transition: opacity 0.3s ease, border-color 0.2s, box-shadow 0.2s, scale 0.15s var(--ease);
+  }
+  .js-cursor-anel.hovering {
+    border-color: rgba(255, 122, 200, 0.9);
+    box-shadow: 0 0 16px rgba(255, 30, 98, 0.5);
+  }
+  .js-cursor-ponto.hovering {
+    background: #FF7AC8;
+    box-shadow: 0 0 12px #FF2E9A, 0 0 4px #ffffff;
+  }
+
+  /* Lateral Principal — Unificada com o palco do Tinder (sem linha divisória) */
+  aside {
+    background: transparent;
+    border: 0;
+    padding: 16px 14px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: overlay;
+    overflow-x: hidden;
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes cabaret-aura {
+    0% {
+      background-position: 0% 0%, 100% 20%, 10% 100%, 80% 40%, 0 0;
+    }
+    50% {
+      background-position: 85% 45%, 15% 80%, 90% 25%, 30% 70%, 0 0;
+    }
+    100% {
+      background-position: 25% 95%, 80% 10%, 40% 60%, 60% 20%, 0 0;
+    }
+  }
+  aside > * { flex: none; }
+  aside::-webkit-scrollbar { width: 3px; }
+  aside::-webkit-scrollbar-track { background: transparent; margin: 36px 0; }
+  aside::-webkit-scrollbar-thumb {
+    background: rgba(255, 92, 180, 0.07);
+    border-radius: 999px;
+  }
+  aside:hover::-webkit-scrollbar-thumb { background: rgba(255, 92, 180, 0.14); }
+  aside::-webkit-scrollbar-thumb:hover { background: rgba(255, 92, 180, 0.28); }
+
+  /* Topo: Semáforo + Marca + Sair */
+  .top-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr; /* marca no centro real, independente da largura dos lados */
+    align-items: center;
+    min-height: 36px;
+    margin-bottom: 2px;
+    -webkit-app-region: drag;
+    position: relative;
+    z-index: 10;
+  }
+  .brand-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    -webkit-app-region: drag;
+    cursor: grab;
+  }
+  .brand-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 0 0 1px rgba(255, 61, 168, 0.42), 0 0 10px rgba(255, 30, 98, 0.25);
+    background: var(--surface-2);
+    transition: box-shadow 0.24s var(--ease);
+    animation: icone-respirar 9s ease-in-out infinite;
+    flex: none;
+    -webkit-app-region: no-drag;
+  }
+  .brand-icon-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 8px;
+  }
+  .brand-title {
+    font: 750 18px/1.2 var(--font-display);
+    color: var(--pink);
+    background: linear-gradient(90deg, #FF94D0 0%, #FF2474 28%, #D268FF 55%, #FF2E9A 80%, #FF94D0 100%);
+    background-size: 240% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.01em;
+    filter: drop-shadow(0 0 8px rgba(255, 30, 110, 0.38));
+    animation: letreiro-fluir 9s ease-in-out infinite;
+  }
+  @keyframes letreiro-fluir {
+    0%, 100% {
+      background-position: 0% 50%;
+      filter: drop-shadow(0 0 7px rgba(255, 30, 110, 0.32));
+    }
+    50% {
+      background-position: 100% 50%;
+      filter: drop-shadow(0 0 12px rgba(255, 46, 154, 0.55));
+    }
+  }
+  @keyframes icone-respirar {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(255, 61, 168, 0.36), 0 0 9px rgba(255, 30, 98, 0.2); }
+    50% { box-shadow: 0 0 0 1px rgba(255, 92, 180, 0.58), 0 0 16px rgba(255, 30, 98, 0.42); }
+  }
+
+  .quit {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: rgba(46, 14, 58, 0.45);
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s var(--ease), background-color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.16s var(--ease-out);
+    -webkit-app-region: no-drag !important;
+    position: relative;
+    z-index: 50;
+  }
+  .quit:active { transform: scale(0.96); }
+  .quit:hover {
+    color: var(--red);
+    background: rgba(255, 30, 98, 0.15);
+    border-color: rgba(255, 77, 115, 0.48);
+    box-shadow: 0 0 12px rgba(255, 30, 98, 0.25);
+  }
+  .quit:focus-visible { box-shadow: var(--focus); }
+  .quit svg {
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  /* Cartão Master: Automático & Status (Hero Card) */
+  .surface {
+    background: linear-gradient(155deg, rgba(36, 10, 48, 0.72) 0%, rgba(22, 6, 32, 0.8) 100%);
+    border: 1px solid rgba(255, 46, 154, 0.24);
+    border-radius: var(--r);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 6px 22px -2px rgba(0, 0, 0, 0.55), 0 0 16px rgba(255, 30, 98, 0.1);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .auto-card {
+    position: relative;
+    isolation: isolate;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Feixe circular de néon nas bordas dos widgets:
+     inset: 0 coloca o anel de 1.5px exatamente na borda interna do padding-box (sem ser cortado por overflow: hidden),
+     enquanto mask-composite: exclude recorta o miolo e o <i> gira 360° na GPU. */
+  .beam {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.88;
+    transition: opacity 0.35s ease;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+  .beam i {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 680px;
+    height: 680px;
+    margin: -340px 0 0 -340px;
+    will-change: transform;
+    animation: beam 10s linear infinite;
+    background: conic-gradient(
+      transparent 0 14%,
+      rgba(255, 30, 98, 0.2) 22%,
+      rgba(255, 46, 154, 0.92) 34%,
+      rgba(255, 225, 245, 0.98) 38%,
+      rgba(188, 66, 255, 0.65) 43%,
+      transparent 50%,
+      transparent 64%,
+      rgba(188, 66, 255, 0.2) 72%,
+      rgba(188, 66, 255, 0.88) 84%,
+      rgba(255, 180, 230, 0.95) 88%,
+      rgba(255, 30, 98, 0.55) 93%,
+      transparent 100%
+    );
+  }
+  .auto-card:hover > .beam,
+  .metric-card:hover > .beam,
+  .algo-card:hover > .beam,
+  .settings-list:hover > .beam,
+  .logs-container:hover > .beam,
+  .browser:hover > .beam,
+  .lights:hover > .beam,
+  .quit:hover > .beam,
+  .segmented-nav:hover > .beam {
+    opacity: 1;
+  }
+  /* Cápsula das 3 gemas (.lights), botão Sair (.quit) e cápsula de abas (.segmented-nav) */
+  .lights > .beam,
+  .quit > .beam {
+    padding: 1.5px;
+    opacity: 0.9;
+  }
+  .lights > .beam i,
+  .quit > .beam i {
+    width: 180px;
+    height: 180px;
+    margin: -90px 0 0 -90px;
+    animation-duration: 7s;
+  }
+  .quit > .beam i {
+    animation-delay: -3.5s;
+  }
+  .segmented-nav > .beam {
+    padding: 1.4px;
+    opacity: 0.82;
+  }
+  .segmented-nav > .beam i {
+    width: 440px;
+    height: 440px;
+    margin: -220px 0 0 -220px;
+    animation-duration: 10s;
+    animation-delay: -5s;
+  }
+  /* Moldura do Tinder (.browser): disco maior para cobrir toda a volta em qualquer resolução */
+  .browser > .beam {
+    padding: 2px;
+    opacity: 0.9;
+    z-index: 5;
+  }
+  .browser > .beam i {
+    width: 3000px;
+    height: 3000px;
+    margin: -1500px 0 0 -1500px;
+    animation-duration: 14s;
+    animation-delay: -3s;
+    background: conic-gradient(
+      transparent 0 12%,
+      rgba(255, 30, 98, 0.22) 20%,
+      rgba(255, 46, 154, 0.95) 33%,
+      rgba(255, 225, 245, 1) 37%,
+      rgba(188, 66, 255, 0.7) 42%,
+      transparent 50%,
+      transparent 62%,
+      rgba(188, 66, 255, 0.22) 70%,
+      rgba(188, 66, 255, 0.92) 83%,
+      rgba(255, 185, 235, 0.98) 87%,
+      rgba(255, 30, 98, 0.65) 92%,
+      transparent 100%
+    );
+  }
+  body[data-status=running] .browser > .beam {
+    opacity: 1;
+  }
+  body[data-status=running] .browser > .beam i {
+    animation-duration: 8s;
+  }
+  /* Variações de cor, velocidade e fase por widget para movimento orgânico */
+  .metric-today > .beam i {
+    animation-duration: 9s;
+    animation-delay: -2s;
+    background: conic-gradient(
+      transparent 0 18%,
+      rgba(255, 46, 154, 0.18) 28%,
+      rgba(255, 46, 154, 0.95) 42%,
+      rgba(255, 220, 242, 0.98) 46%,
+      rgba(188, 66, 255, 0.5) 52%,
+      transparent 60%,
+      transparent 74%,
+      rgba(255, 30, 98, 0.16) 82%,
+      rgba(255, 92, 180, 0.78) 91%,
+      transparent 100%
+    );
+  }
+  .metric-matches > .beam i {
+    animation-duration: 9s;
+    animation-delay: -5.5s;
+    background: conic-gradient(
+      transparent 0 18%,
+      rgba(255, 30, 98, 0.2) 28%,
+      rgba(255, 30, 98, 0.96) 42%,
+      rgba(255, 220, 232, 0.98) 46%,
+      rgba(255, 46, 154, 0.55) 52%,
+      transparent 60%,
+      transparent 74%,
+      rgba(255, 46, 154, 0.18) 82%,
+      rgba(255, 77, 136, 0.8) 91%,
+      transparent 100%
+    );
+  }
+  .metric-total > .beam i {
+    animation-duration: 11s;
+    animation-delay: -4s;
+    background: conic-gradient(
+      transparent 0 16%,
+      rgba(188, 66, 255, 0.2) 26%,
+      rgba(188, 66, 255, 0.95) 39%,
+      rgba(245, 220, 255, 0.98) 43%,
+      rgba(255, 46, 154, 0.55) 49%,
+      transparent 56%,
+      transparent 68%,
+      rgba(255, 46, 154, 0.18) 76%,
+      rgba(255, 46, 154, 0.85) 88%,
+      rgba(255, 210, 240, 0.92) 91%,
+      transparent 100%
+    );
+  }
+  .settings-list > .beam,
+  .logs-container > .beam {
+    opacity: 0.75;
+  }
+  .settings-list > .beam i,
+  .logs-container > .beam i {
+    animation-duration: 13s;
+    animation-delay: -6.5s;
+  }
+  /* rim/glow por status (data-status no <body>) */
+  .auto.on {
+    border-color: rgba(255, 61, 168, 0.45);
+    box-shadow: var(--glow-pink-sm), 0 6px 22px rgba(0, 0, 0, 0.55);
+  }
+  .auto.on .beam { opacity: 1; }
+  .auto.on .beam i { animation-duration: 6s; }
+  body[data-status=running] .auto.on { border-color: var(--line-neon); box-shadow: var(--glow-pink-lg); }
+  body[data-status=running] .auto.on .beam { opacity: 1; }
+  body[data-status=login] .auto { border-color: var(--pink-hi); box-shadow: var(--glow-pink-sm); }
+  body[data-status=error] .auto { border-color: var(--error); box-shadow: none; }
+  body:has(.auto.on) .brand-icon-box { box-shadow: 0 0 0 1px var(--line-neon), 0 0 16px rgba(255, 30, 98, 0.45); }
+  @keyframes beam { to { transform: rotate(360deg); } }
+
+  .auto-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .auto-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .auto-icon-box {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: rgba(255, 30, 98, 0.1);
+    display: grid;
+    place-items: center;
+    flex: none;
+    border: 1px solid rgba(255, 46, 154, 0.25);
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+  }
+  .auto.on .auto-icon-box {
+    background: rgba(255, 30, 98, 0.18);
+    border-color: rgba(255, 61, 168, 0.45);
+    box-shadow: 0 0 12px rgba(255, 30, 98, 0.25);
+  }
+  .auto-ico {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+  .auto-ico svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .auto-ico .ico-heart {
+    fill: #E05A9C;
+    filter: drop-shadow(0 0 4px rgba(255, 30, 98, 0.4));
+    transition: fill 0.3s, filter 0.3s;
+    transform-origin: center;
+    animation: heart-lounge 5.5s ease-in-out infinite;
+  }
+  .auto-ico .ico-bolt {
+    fill: #CE8EFF;
+    filter: drop-shadow(0 0 4px rgba(188, 66, 255, 0.4));
+    transition: fill 0.3s, filter 0.3s;
+    transform-origin: center;
+    animation: bolt-lounge 5.5s ease-in-out infinite 2.75s;
+  }
+  @keyframes heart-lounge {
+    0%, 100% { opacity: 0.78; filter: drop-shadow(0 0 3px rgba(255, 30, 98, 0.25)); }
+    50% { opacity: 1; filter: drop-shadow(0 0 7px rgba(255, 30, 98, 0.65)); }
+  }
+  @keyframes bolt-lounge {
+    0%, 100% { opacity: 0.78; filter: drop-shadow(0 0 3px rgba(188, 66, 255, 0.25)); }
+    50% { opacity: 1; filter: drop-shadow(0 0 7px rgba(188, 66, 255, 0.65)); }
+  }
+  .auto.on .auto-ico .ico-heart {
+    fill: #FF2474;
+    filter: drop-shadow(0 0 6px rgba(255, 30, 98, 0.7));
+    animation: heart-pulse 2.2s ease-in-out infinite;
+  }
+  .auto.on .auto-ico .ico-bolt {
+    fill: #E29BFF;
+    filter: drop-shadow(0 0 6px rgba(188, 66, 255, 0.7));
+    animation: bolt-flash 2.2s ease-in-out infinite;
+  }
+
+  @keyframes heart-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  @keyframes bolt-flash {
+    0%, 100% { opacity: 0.9; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.06); }
+  }
+
+  .auto-labels {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .auto-title {
+    font: 600 14px/1.2 var(--font-display);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .auto-subtitle {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 1px;
+  }
+
+  /* Interruptor Néon */
+  .switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex: none;
+    display: inline-block;
+  }
+  .switch input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+    z-index: 2;
+  }
+  .switch i {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--line-input);
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .switch i::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--text-2);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    transform-origin: left center;
+    transition: transform 0.24s var(--ease-out), transform-origin 0.24s var(--ease-out), background 0.2s, box-shadow 0.2s;
+  }
+  .switch input:checked + i {
+    background: var(--grad-neon);
+    border-color: transparent;
+    box-shadow: 0 0 0 1px rgba(255, 61, 168, 0.35), 0 0 10px rgba(255, 30, 98, 0.22);
+  }
+  .auto .switch input:checked + i, .switch input:checked:hover + i {
+    box-shadow: var(--glow-pink-sm);
+  }
+  .switch input:checked + i::after {
+    transform: translateX(20px);
+    transform-origin: right center;
+    background: radial-gradient(circle at 35% 30%, #ffffff 0 38%, #FCE4F4 75%, #F2C2E4);
+    box-shadow: 0 1px 4px rgba(60, 0, 40, 0.45), 0 0 6px rgba(255, 255, 255, 0.45);
+  }
+  /* apertar estica o botão na direção em que ele vai */
+  .switch input:active + i::after { transform: scaleX(1.25); }
+  .switch input:checked:active + i::after { transform: translateX(20px) scaleX(1.25); }
+  .switch input:not(:checked):hover + i { border-color: var(--pink-hi); }
+  .switch input:not(:checked):hover + i::after { background: var(--text); }
+  .switch input:focus-visible + i { box-shadow: var(--focus); }
+  .switch input:disabled + i { opacity: 0.4; cursor: not-allowed; }
+
+  /* Linha de status + radar */
+  .status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(18, 4, 28, 0.65);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 12px;
+  }
+  .state {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex: none;
+    background: var(--c, var(--gray));
+    transition: background 0.25s, box-shadow 0.25s;
+    position: relative;
+    box-shadow: 0 0 8px var(--c, transparent);
+  }
+  .dot.live::before, .dot.live::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid var(--c);
+    animation: ripple 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  }
+  .dot.live::after { animation-delay: 1.2s; }
+  @keyframes ripple {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(3.6); opacity: 0; }
+  }
+  .status-box {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .status-badge-lbl {
+    font-size: 9px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+  }
+  .status {
+    color: var(--text);
+    font: 600 15px/1.3 var(--font-display);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sub-timer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--amber);
+    background: rgba(255, 194, 107, 0.12);
+    border: 1px solid rgba(255, 194, 107, 0.28);
+    border-radius: 6px;
+    padding: 3px 7px;
+    font-variant-numeric: tabular-nums;
+  }
+  .sub-timer svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .sub:empty { display: none; }
+  .sub:empty ~ svg { display: none; }
+  .sub-timer:empty { display: none; }
+
+  /* Botão Principal Néon */
+  .primary {
+    height: 44px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: var(--grad-action);
+    background-size: 125% 125%;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    box-shadow: var(--glow-pink-sm);
+    transition: transform 0.16s var(--ease-out), box-shadow 0.16s ease, background-position 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .primary:hover {
+    background-position: 100% 100%;
+    box-shadow: 0 0 0 1px rgba(255, 92, 180, 0.65), 0 0 20px rgba(255, 30, 98, 0.42);
+  }
+  .primary:active {
+    background: var(--grad-action-pressed);
+    transform: scale(0.97);
+    box-shadow: inset 0 2px 6px rgba(4, 0, 10, 0.5), 0 0 0 1px rgba(255, 61, 168, 0.45);
+  }
+  .primary:focus-visible { box-shadow: var(--focus); }
+  .primary:disabled {
+    background: rgba(36, 10, 48, 0.7);
+    color: var(--text-disabled);
+    box-shadow: inset 0 0 0 1px rgba(255, 46, 154, 0.2);
+    cursor: not-allowed;
+    transform: none;
+  }
+  .primary:disabled::before { display: none; }
+  .primary.busy:disabled { /* ciclo rodando: mantém a cor, com o spinner e o brilho correndo */
+    color: #ffffff;
+    background: var(--grad-action);
+    box-shadow: var(--glow-pink-sm);
+  }
+  .primary.busy::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+    animation: shimmer 1.8s linear infinite;
+    pointer-events: none;
+  }
+  .spinner {
+    display: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: var(--pink-hi);
+    animation: spin 0.9s linear infinite;
+  }
+  .primary.busy .spinner { display: block; }
+  .faisca { /* luz que sai do ponto do clique em "Verificar agora" */
+    position: absolute;
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.55), rgba(255, 122, 198, 0.3) 22%, transparent 44%, rgba(255, 220, 240, 0.4) 50%, transparent 56%); /* brilho no centro + onda fina */
+    pointer-events: none;
+    translate: -50% -50%;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes shimmer {
+    0% { transform: translateX(-120%); }
+    60%, 100% { transform: translateX(340%); }
+  }
+
+  /* Métricas Analíticas — 2 cartões + Total na largura toda */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .metric-total { grid-column: 1 / -1; }
+  .metric-card {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(150deg, rgba(44, 12, 54, 0.62) 0%, rgba(20, 5, 30, 0.78) 100%);
+    border: 1px solid rgba(255, 46, 154, 0.22);
+    border-top: 1px solid rgba(255, 180, 225, 0.22);
+    border-radius: 14px;
+    padding: 12px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 5px;
+    overflow: hidden;
+    box-shadow: 0 5px 18px -2px rgba(0, 0, 0, 0.55), 0 0 12px rgba(255, 30, 98, 0.08);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .metric-matches {
+    border-color: rgba(255, 30, 98, 0.28);
+    border-top-color: rgba(255, 150, 190, 0.28);
+  }
+  .metric-total {
+    border-color: rgba(188, 66, 255, 0.24);
+    border-top-color: rgba(225, 165, 255, 0.25);
+  }
+  .metric-card:hover {
+    border-color: rgba(255, 92, 180, 0.45);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.65), 0 0 18px rgba(255, 30, 98, 0.2);
+  }
+  .metric-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 1px;
+  }
+  .metric-icon-box {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  .metric-icon-box svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+  }
+  .metric-today .metric-icon-box { background: rgba(255, 46, 154, 0.16); color: var(--pink); }
+  .metric-matches .metric-icon-box { background: rgba(255, 30, 98, 0.18); color: #FF4D80; }
+  .metric-total .metric-icon-box { background: rgba(188, 66, 255, 0.16); color: var(--violet-hi); }
+
+  .metric-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+  .badge-today { background: rgba(255, 46, 154, 0.14); color: var(--pink-hi); border: 1px solid rgba(255, 46, 154, 0.3); }
+  .badge-matches { background: rgba(255, 30, 98, 0.18); color: #FF80A6; border: 1px solid rgba(255, 30, 98, 0.36); }
+  .badge-total { background: rgba(188, 66, 255, 0.14); color: var(--violet-hi); border: 1px solid rgba(188, 66, 255, 0.28); }
+
+  .metric-val {
+    font: 650 32px/1.1 var(--font-display);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    text-shadow: 0 0 12px rgba(255, 46, 154, 0.22);
+  }
+  .text-neon-pink {
+    color: #FF80B5;
+    text-shadow: 0 0 14px rgba(255, 30, 98, 0.55);
+  }
+  .text-peach {
+    color: var(--text);
+    text-shadow: 0 0 12px rgba(188, 66, 255, 0.24);
+  }
+
+  .metric-foot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  .metric-lbl {
+    font-size: 11px;
+    color: var(--text-3);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .metric-sub-tag {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-3);
+    flex: none;
+  }
+  .sub-tag-pink { color: var(--accent-light); }
+  .sub-tag-gold { color: #CF8BFF; }
+
+  .metric-bar-visual {
+    align-self: stretch; /* o cartão agora centraliza os filhos; a barra segue na largura toda */
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+    overflow: visible;
+    margin-top: 3px;
+  }
+  .metric-bar-visual span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background-size: 240% 100%;
+    transition: width 0.4s var(--ease);
+    animation: tubo-neon-onda 7.5s ease-in-out infinite;
+  }
+  .metric-today .metric-bar-visual span {
+    background-image: linear-gradient(90deg, rgba(255, 46, 154, 0.35) 0%, #FF2E9A 35%, #FFB8E2 50%, #FF2E9A 65%, rgba(255, 46, 154, 0.35) 100%);
+    box-shadow: 0 0 9px rgba(255, 46, 154, 0.5);
+    animation-delay: 0s;
+  }
+  .metric-matches .metric-bar-visual span {
+    background-image: linear-gradient(90deg, rgba(255, 30, 98, 0.35) 0%, #FF1E62 35%, #FFB0C8 50%, #FF1E62 65%, rgba(255, 30, 98, 0.35) 100%);
+    box-shadow: 0 0 10px rgba(255, 30, 98, 0.55);
+    animation-delay: -2.5s;
+  }
+  .metric-total .metric-bar-visual span {
+    background-image: linear-gradient(90deg, rgba(188, 66, 255, 0.3) 0%, #BC42FF 30%, #FF7AC8 50%, #BC42FF 70%, rgba(188, 66, 255, 0.3) 100%);
+    box-shadow: 0 0 10px rgba(188, 66, 255, 0.45);
+    animation-delay: -5s;
+  }
+  @keyframes tubo-neon-onda {
+    0%, 100% {
+      background-position: 0% 50%;
+      filter: brightness(0.92);
+    }
+    50% {
+      background-position: 100% 50%;
+      filter: brightness(1.18);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     12 · LUZ QUE SEGUE O MOUSE (Spotlight Hover)
+     ══════════════════════════════════════════════════════════ */
+  .js-luz {
+    position: relative;
+    overflow: hidden;
+  }
+  .js-luz::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: inherit;
+    z-index: 1;
+    background: radial-gradient(
+      var(--luz-size, 180px) circle at var(--x, 50%) var(--y, 50%),
+      var(--luz, rgba(255, 255, 255, 0.16)),
+      transparent 70%
+    );
+  }
+  .js-luz:hover::before {
+    opacity: 1;
+  }
+
+  /* Cores temáticas da luz */
+  .auto-card.js-luz {
+    --luz-size: 260px;
+    --luz: rgba(255, 30, 98, 0.2);
+  }
+  .metric-today.js-luz {
+    --luz-size: 150px;
+    --luz: rgba(255, 46, 154, 0.22);
+  }
+  .metric-matches.js-luz {
+    --luz-size: 150px;
+    --luz: rgba(255, 30, 98, 0.25);
+  }
+  .metric-total.js-luz {
+    --luz-size: 160px;
+    --luz: rgba(188, 66, 255, 0.2);
+  }
+  .algo-card.js-luz {
+    --luz-size: 220px;
+    --luz: rgba(255, 30, 98, 0.22);
+  }
+
+  /* Garante que o conteúdo dos cards fique acima do feixe de luz */
+  .auto-card > *:not(.beam),
+  .metric-card > *:not(.beam),
+  .algo-card > *:not(.beam) {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Segmented Control / Tabs */
+  .segmented-nav {
+    display: flex;
+    align-items: center;
+    background: var(--surface-2);
+    border: 1px solid rgba(255, 46, 154, 0.22);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 4px;
+    margin-top: 2px;
+    position: relative;
+    isolation: isolate;
+  }
+  .segmented-nav::before { /* indicador da aba ativa: desliza entre as duas */
+    content: "";
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 12px) / 2);
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(255, 30, 98, 0.2) 0%, rgba(188, 66, 255, 0.22) 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 61, 168, 0.45), 0 0 12px rgba(255, 30, 98, 0.18);
+    z-index: -1;
+    transition: transform 0.28s var(--ease-in-out);
+  }
+  .segmented-nav:has(#tabBtnLogs.active)::before { transform: translateX(calc(100% + 4px)); }
+  aside[data-teclado] .segmented-nav::before { transition: none; }
+  .tab-pill {
+    flex: 1;
+    height: 32px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-3);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: color 0.2s ease, background-color 0.2s ease, transform 0.16s var(--ease-out);
+    position: relative;
+  }
+  .tab-pill:not(.active):hover {
+    color: var(--text-2);
+    background: rgba(255, 46, 154, 0.06);
+  }
+  .tab-pill.active { color: var(--text); }
+  .tab-pill.active svg { color: var(--pink); }
+  .tab-pill:active { transform: scale(0.97); }
+  .tab-pill:focus-visible { box-shadow: var(--focus); }
+  .tab-pill svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    transition: color 0.2s ease;
+  }
+  .tab-unread-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-light);
+    display: none;
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .tab-unread-dot.show { display: block; transition: opacity 0.2s ease-out, transform 0.2s var(--ease-out); }
+  @starting-style { .tab-unread-dot.show { opacity: 0; transform: scale(0.5); } }
+
+  /* Painéis de Conteúdo das Abas */
+  .tab-panel { display: none; flex-direction: column; gap: 10px; position: relative; z-index: 15; }
+  .tab-panel.active { display: flex; }
+  #paneLogs { flex: 1 0 200px; min-height: 200px; } /* Atividade ocupa o que sobra da lateral; abaixo disso a lateral rola */
+
+  /* Cartão Explicativo: Algoritmo da 2ª Carta (Padrão para Maior Chance de Match) */
+  .algo-card {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(155deg, rgba(44, 10, 56, 0.78) 0%, rgba(22, 5, 34, 0.88) 100%);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 46, 154, 0.28);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(4, 0, 10, 0.5), 0 0 16px rgba(255, 30, 98, 0.1);
+  }
+  .algo-card > .beam {
+    opacity: 0.82;
+  }
+  .algo-card > .beam i {
+    animation-duration: 11s;
+    animation-delay: -2.5s;
+  }
+  .algo-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .algo-title-group {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+  .algo-ico {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: rgba(255, 30, 98, 0.18);
+    border: 1px solid rgba(255, 61, 168, 0.38);
+    box-shadow: 0 0 10px rgba(255, 30, 98, 0.22);
+    display: grid;
+    place-items: center;
+    color: var(--pink-hi);
+    flex: none;
+  }
+  .algo-ico svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 4px rgba(255, 46, 154, 0.6));
+  }
+  .algo-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .algo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 30, 98, 0.18);
+    color: var(--pink-hi);
+    border: 1px solid rgba(255, 61, 168, 0.42);
+    box-shadow: 0 0 10px rgba(255, 30, 98, 0.2);
+    flex: none;
+  }
+  .algo-badge::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--pink-hi);
+    box-shadow: 0 0 6px var(--pink);
+  }
+  .algo-badge.waiting {
+    background: rgba(255, 194, 107, 0.16);
+    color: var(--amber);
+    border-color: rgba(255, 194, 107, 0.42);
+    box-shadow: 0 0 10px rgba(255, 194, 107, 0.18);
+  }
+  .algo-badge.waiting::before {
+    background: var(--amber);
+    box-shadow: 0 0 6px var(--amber);
+  }
+  .algo-badge.paused {
+    background: rgba(154, 107, 140, 0.14);
+    color: var(--text-3);
+    border-color: rgba(154, 107, 140, 0.28);
+    box-shadow: none;
+  }
+  .algo-badge.paused::before {
+    background: var(--text-3);
+    box-shadow: none;
+  }
+  .sched-card {
+    flex: none;
+  }
+  .sched-card > .beam i {
+    animation-duration: 12s;
+    animation-delay: -5.5s;
+  }
+  .algo-steps {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    background: rgba(14, 3, 22, 0.6);
+    border: 1px solid rgba(255, 46, 154, 0.18);
+    border-radius: 9px;
+    padding: 5px 8px;
+    font-size: 10.5px;
+  }
+  .algo-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-2);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .algo-step b {
+    font-weight: 700;
+  }
+  .algo-step.step-skip b { color: var(--text-3); }
+  .algo-step.step-like b {
+    color: var(--pink-hi);
+    text-shadow: 0 0 8px rgba(255, 30, 98, 0.55);
+  }
+  .algo-step.step-reload { color: var(--violet-hi); font-weight: 600; }
+  .algo-arrow {
+    color: var(--text-disabled);
+    font-size: 10px;
+  }
+  .algo-desc {
+    font-size: 11px;
+    line-height: 1.42;
+    color: var(--text-2);
+  }
+  .algo-desc strong {
+    color: var(--pink-hi);
+    font-weight: 600;
+  }
+
+  /* Lista de Ajustes (Configurações) */
+  .settings-list { /* uma lista E1 só, linhas separadas por divisórias */
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    background: rgba(24, 7, 36, 0.88);
+    border: 1px solid rgba(255, 46, 154, 0.24);
+    border-radius: 14px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 24px rgba(4, 0, 10, 0.5), 0 0 14px rgba(255, 30, 98, 0.08);
+  }
+  .setting-row {
+    background: transparent;
+    border-bottom: 1px solid var(--line);
+    min-height: 56px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .setting-row:hover,
+  .setting-row:focus-within,
+  .setting-row:has(.dd.open) {
+    z-index: 20;
+  }
+  .setting-row:last-of-type { border-bottom: 0; }
+  .setting-row:first-of-type { border-radius: 14px 14px 0 0; }
+  .setting-row:last-of-type, .setting-row:has(+ .setting-row[hidden]:last-of-type) { border-bottom: 0; border-radius: 0 0 14px 14px; } /* a Localização some no modo navegador */
+  .setting-row:hover { background: var(--surface-hover); }
+  .setting-row:has(.switch input:checked) .setting-ico {
+    color: var(--pink);
+    background: rgba(255, 30, 98, 0.14);
+  }
+  .setting-label-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .setting-ico {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: rgba(64, 18, 66, 0.45);
+    display: grid;
+    place-items: center;
+    color: var(--text-2);
+    flex: none;
+    transition: color 0.2s, background 0.2s;
+  }
+  .setting-ico svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .setting-texts {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .setting-title-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .setting-title-line label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .setting-desc {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  /* Seletor com lista própria: a lista nativa do Windows (branca/azul) não aceita estilo.
+     O <select id="retryMin"> continua no DOM, invisível, como fonte do valor; o botão e a lista abaixo são só a cara dele. */
+  .select-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .dd-native {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .dd-btn {
+    min-width: 112px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--line-input);
+    border-radius: 8px;
+    padding: 0 8px 0 10px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.16s var(--ease-out);
+  }
+  .dd-btn:hover { border-color: var(--pink-hi); }
+  .dd-btn:active { transform: scale(0.98); }
+  .dd-btn:focus-visible { box-shadow: var(--focus); border-color: var(--pink); }
+  .dd.open .dd-btn { border-color: var(--pink); box-shadow: 0 0 0 1px rgba(255, 61, 168, 0.35), 0 0 14px rgba(255, 30, 98, 0.2); }
+  .dd-chevron {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    color: var(--text-3);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.2s var(--ease-out), color 0.18s ease;
+  }
+  .dd-btn:hover .dd-chevron { color: var(--text); }
+  .dd.open .dd-chevron { transform: rotate(180deg); color: var(--pink-hi); }
+
+  .dd-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: max(100%, 148px);
+    z-index: 40;
+    list-style: none;
+    padding: 4px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(44, 12, 56, 0.96), rgba(26, 6, 36, 0.98));
+    border: 1px solid var(--line-strong);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 14px 36px rgba(0, 0, 0, 0.68), 0 0 22px rgba(255, 30, 98, 0.18);
+    backdrop-filter: blur(12px);
+    /* cresce a partir do botão (canto superior direito); fecha mais rápido do que abre */
+    transform-origin: 88% 0;
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s ease-out, transform 0.12s ease-out, visibility 0s linear 0.12s;
+  }
+  .dd.open .dd-list {
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.16s ease-out, transform 0.2s var(--ease-out), visibility 0s;
+  }
+  .dd[data-kb] .dd-list { transition: none; } /* aberto pelo teclado: sem animação */
+  .dd-opt {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 10px;
+    border-radius: 8px;
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+  .dd-opt.ativo { background: rgba(255, 46, 154, 0.12); color: var(--text); }
+  .dd-opt[aria-selected="true"] { color: var(--pink-hi); font-weight: 600; }
+  .dd-opt[aria-selected="true"].ativo { background: rgba(255, 30, 98, 0.16); }
+  .dd-opt:active { transform: scale(0.98); }
+  .dd-opt svg { /* o "visto" da opção escolhida: uma gema neon */
+    width: 12px;
+    height: 12px;
+    flex: none;
+    opacity: 0;
+    fill: none;
+    stroke: var(--pink-hi);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 4px rgba(255, 46, 154, 0.7));
+    transition: opacity 0.15s ease;
+  }
+  .dd-opt[aria-selected="true"] svg { opacity: 1; }
+
+  /* Botão de Ajuda & Tooltip Bubble */
+  .help {
+    width: 18px;
+    height: 18px;
+    border: 0;
+    background: transparent;
+    border-radius: 50%;
+    cursor: help;
+    display: grid;
+    place-items: center;
+    flex: none;
+    color: var(--text-3);
+    transition: color 0.15s ease, transform 0.16s var(--ease-out);
+  }
+  .help:active { transform: scale(0.9); }
+  .help::before {
+    content: "?";
+    display: grid;
+    place-items: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .help:hover, .help:focus-visible { color: var(--pink-hi); }
+  .help:focus-visible { box-shadow: var(--focus); }
+
+  .tip {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: calc(100% + 8px);
+    z-index: 60;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #240832;
+    color: var(--text);
+    border: 1px solid rgba(255, 92, 180, 0.45);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.85), 0 0 18px rgba(255, 30, 98, 0.25);
+    font-size: 11px;
+    line-height: 1.45;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+    transform-origin: 50% 100%;
+    transition: opacity 0.12s ease-out, transform 0.12s var(--ease-out), visibility 0s linear 0.12s;
+    visibility: hidden;
+  }
+  .tip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 20px;
+    border: 6px solid transparent;
+    border-top-color: #240832;
+  }
+  .help:hover + .tip, .help:focus-visible + .tip {
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    transition: opacity 0.16s ease-out 0.2s, transform 0.16s var(--ease-out) 0.2s, visibility 0s linear 0.2s;
+  }
+  .help:focus-visible + .tip { transition: none; } /* pelo teclado: na hora */
+
+  /* Atividade / Logs */
+  .logs-container {
+    flex: 1 1 0;
+    position: relative;
+    isolation: isolate;
+    background: rgba(24, 7, 36, 0.76);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 46, 154, 0.24);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0; /* encolhe até a altura do painel; a lista rola por dentro */
+  }
+  .logs {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 4px;
+    user-select: text;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .logs::-webkit-scrollbar { width: 3px; }
+  .logs::-webkit-scrollbar-track { background: transparent; margin: 10px 0; }
+  .logs::-webkit-scrollbar-thumb {
+    background: rgba(255, 92, 180, 0.08);
+    border-radius: 999px;
+  }
+  .logs:hover::-webkit-scrollbar-thumb { background: rgba(255, 92, 180, 0.16); }
+  .logs::-webkit-scrollbar-thumb:hover { background: rgba(255, 92, 180, 0.28); }
+  .log {
+    display: grid;
+    grid-template-columns: 46px 1fr;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(22, 6, 32, 0.45);
+    border: 1px solid rgba(255, 46, 154, 0.08);
+    font-size: 11px;
+    align-items: baseline;
+    transition: background 0.15s;
+  }
+  .log:hover { background: rgba(64, 16, 68, 0.28); }
+  .log.novo { transition: background 0.15s, opacity 0.3s ease-out, transform 0.3s var(--ease-out); }
+  @starting-style { .log.novo { opacity: 0; transform: translateY(-6px); } }
+  .log:first-child {
+    background: rgba(255, 30, 98, 0.1);
+    border-color: rgba(255, 46, 154, 0.3);
+  }
+  .log time {
+    color: var(--text-3);
+    font-size: 10px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .log span {
+    color: var(--text-2);
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+  }
+  .log:first-child span { color: var(--text); font-weight: 500; }
+  .empty {
+    color: var(--text-3);
+    font-size: 12px;
+    text-align: center;
+    padding: 12px 0;
+    margin: auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .empty svg { width: 28px; height: 28px; stroke: currentColor; fill: none; opacity: 0.5; }
+
+  /* Painel do Navegador Tinder (Lado Direito — Unificado com o painel lateral) */
+  main {
+    padding: 16px 16px 20px 6px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+    -webkit-app-region: drag;
+  }
+
+  .browser {
+    flex: 1;
+    border-radius: var(--r);
+    padding: 2px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 46, 154, 0.28);
+    background: var(--bg-void);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 20px rgba(255, 30, 98, 0.16), 0 0 40px rgba(188, 66, 255, 0.1);
+    position: relative;
+    isolation: isolate;
+    -webkit-app-region: no-drag;
+    transition: border-color 0.24s var(--ease), box-shadow 0.24s var(--ease);
+  }
+  .browser::before { /* ícone apagado até a página do Tinder pintar por cima */
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: url(build/icon.png) center / 96px no-repeat;
+    opacity: 0.15;
+  }
+  /* a moldura acende enquanto o Spark trabalha; no login, aponta onde agir */
+  body[data-status=running] .browser { border-color: rgba(255, 61, 168, 0.55); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 26px rgba(255, 30, 98, 0.28), 0 0 52px rgba(188, 66, 255, 0.16); }
+  body[data-status=login] .browser { border-color: var(--pink-hi); box-shadow: var(--glow-pink-sm), 0 8px 32px rgba(0, 0, 0, 0.6); }
+  webview {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    border-radius: calc(var(--r) - 2px);
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+  /* janela sem foco (ou na bandeja): sem brilho forte e sem loops gastando CPU */
+  body.blurred .auto, body.blurred .browser, body.blurred .primary { box-shadow: none !important; }
+  body.blurred *, body.blurred *::before, body.blurred *::after { animation-play-state: paused !important; }
+
+  /* Temas de contraste do Windows: sem gradiente nem brilho, bordas visíveis, cursor nativo */
+  @media (forced-colors: active) {
+    *, *::before, *::after { box-shadow: none !important; text-shadow: none !important; }
+    aside, .browser, .primary, .switch input:checked + i { background: Canvas; }
+    .surface, .metric-card, .settings-list, .logs-container, .segmented-nav, .primary, .dd-btn, .dd-list, .switch i { border: 1px solid CanvasText; }
+    .brand-title { -webkit-text-fill-color: CanvasText; background: none; }
+    .tab-pill.active, .switch input:checked + i { background: Highlight; }
+    #sparkCursor { display: none; }
+    html.js-cursor-on aside, html.js-cursor-on aside * { cursor: auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<aside>
+  <!-- Topo: Janela + Marca + Sair -->
+  <div class="top-header">
+    <div class="lights">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <button class="close" id="wClose" title="Fechar e encerrar o Spark" aria-label="Fechar e encerrar o Spark">
+        <svg viewBox="0 0 8 8"><path d="M1.5 1.5l5 5M6.5 1.5l-5 5"/></svg>
+      </button>
+      <button class="min" id="wMin" title="Minimizar" aria-label="Minimizar">
+        <svg viewBox="0 0 8 8"><path d="M1.2 4h5.6"/></svg>
+      </button>
+      <button class="zoom" id="wZoom" title="Maximizar" aria-label="Maximizar">
+        <svg viewBox="0 0 8 8"><path d="M1.5 1.5h3.6L1.5 5.1zM6.5 6.5H2.9L6.5 2.9z"/></svg>
+      </button>
+    </div>
+
+    <div class="brand-group">
+      <div class="brand-icon-box">
+        <img src="build/icon.png" alt="Spark">
+      </div>
+      <h1 class="brand-title">Spark</h1>
+    </div>
+
+    <button class="quit" id="quit" title="Encerra o Spark. Se há uma tentativa agendada, ela continua; pause o Automático para cancelar." aria-label="Sair do aplicativo">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.3 5.8a9 9 0 1 0 11.4 0"/></svg>
+      Sair
+    </button>
+  </div>
+
+  <!-- Cartão Master: Modo Automático -->
+  <section class="surface auto auto-card js-luz" id="autoCard" aria-label="Estado">
+    <span class="beam" aria-hidden="true"><i></i></span>
+
+    <div class="auto-header">
+      <div class="auto-title-group">
+        <div class="auto-icon-box">
+          <span class="auto-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path class="ico-heart" d="M11 4.5C9.2 2.8 6.5 2.5 4.5 4.3 2.3 6.3 2 9.6 3.8 12.3l7.2 7.7 1.2-1.2-1.5-3.8 2.2-.5-2.2-7.5 1.5-.3z"/>
+              <path class="ico-bolt" d="M15.5 2.2l-6.2 9.8h4.5l-4.2 9.5 9.8-11.8h-4.8z"/>
+            </svg>
+          </span>
+        </div>
+        <div class="auto-labels">
+          <label class="auto-title" for="enabled">Modo Automático</label>
+          <span class="auto-subtitle">Swipes e rotinas inteligentes</span>
+        </div>
+      </div>
+      <span class="switch">
+        <input type="checkbox" id="enabled" role="switch">
+        <i></i>
+      </span>
+    </div>
+
+    <div class="status-row">
+      <div class="state">
+        <span class="dot" id="dot" aria-hidden="true"></span>
+        <div class="status-box">
+          <span class="status-badge-lbl">Status</span>
+          <span class="status" id="status" role="status">Iniciando…</span>
+        </div>
+      </div>
+      <div class="sub-timer" id="subTimer">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="sub" id="sub" aria-live="off"></span>
+      </div>
+    </div>
+
+    <button class="primary" id="check">
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="checkText">Verificar agora</span>
+    </button>
+  </section>
+
+  <!-- Métricas Analíticas -->
+  <section class="metrics-grid" aria-label="Métricas">
+    <!-- 1. Curtidas Hoje -->
+    <div class="metric-card metric-today js-luz">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <div class="metric-card-head">
+        <span class="metric-icon-box">
+          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </span>
+        <span class="metric-badge badge-today">Hoje</span>
+      </div>
+      <b class="metric-val" id="today">0</b>
+      <div class="metric-foot">
+        <span class="metric-lbl">Curtidas hoje</span>
+      </div>
+      <div class="metric-bar-visual"><span></span></div>
+    </div>
+
+    <!-- 2. Matches / Conexões -->
+    <div class="metric-card metric-matches js-luz">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <div class="metric-card-head">
+        <span class="metric-icon-box">
+          <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </span>
+        <span class="metric-badge badge-matches">Matches</span>
+      </div>
+      <b class="metric-val text-neon-pink" id="matches">0</b>
+      <div class="metric-foot">
+        <span class="metric-lbl">Conexões</span>
+      </div>
+      <div class="metric-bar-visual"><span></span></div>
+    </div>
+
+    <!-- 3. Total Acumulado Geral -->
+    <div class="metric-card metric-total js-luz">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <div class="metric-card-head">
+        <span class="metric-icon-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        <span class="metric-badge badge-total">Geral</span>
+      </div>
+      <b class="metric-val text-peach" id="total">0</b>
+      <div class="metric-foot">
+        <span class="metric-lbl">Total acumulado</span>
+      </div>
+      <div class="metric-bar-visual"><span></span></div>
+    </div>
+  </section>
+
+  <!-- Abas Segmentadas: Ajustes & Atividade -->
+  <div class="segmented-nav" role="tablist">
+    <span class="beam" aria-hidden="true"><i></i></span>
+    <button class="tab-pill active" id="tabBtnSettings" role="tab" aria-selected="true" aria-controls="paneSettings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Ajustes</span>
+    </button>
+    <button class="tab-pill" id="tabBtnLogs" role="tab" aria-selected="false" aria-controls="paneLogs">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Atividade</span>
+      <span class="tab-unread-dot" id="logDot"></span>
+    </button>
+  </div>
+
+  <!-- Aba Ajustes -->
+  <div class="tab-panel active" id="paneSettings" role="tabpanel">
+    <div class="settings-list" aria-label="Ajustes">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <!-- 1. Intervalo -->
+      <div class="setting-row">
+        <div class="setting-label-group">
+          <div class="setting-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="setting-texts">
+            <div class="setting-title-line">
+              <label id="retryLbl" for="retryBtn">Intervalo de tentativas</label>
+              <button class="help" aria-label="Ajuda: Intervalo de tentativas" aria-describedby="tipRetry"></button>
+              <span class="tip" role="tooltip" id="tipRetry">Sem curtidas, o Spark agenda e encerra. No horário escolhido, abre minimizado e tenta novamente. Se o PC estiver desligado, retoma ao entrar no Windows: espera o prazo restante ou tenta se já venceu. Pause o Automático para cancelar. “Verificar agora” antecipa uma tentativa.</span>
+            </div>
+            <span class="setting-desc">Pausa ao esgotar curtidas</span>
+          </div>
+        </div>
+        <div class="select-box dd" id="retryDd">
+          <select class="dd-native" id="retryMin" tabindex="-1" aria-hidden="true">
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">1 hora</option>
+            <option value="120">2 horas</option>
+            <option value="360">6 horas</option>
+          </select>
+          <button class="dd-btn" id="retryBtn" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="retryList" aria-labelledby="retryLbl" aria-describedby="tipRetry">
+            <span id="retryTxt"></span>
+            <svg class="dd-chevron" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <ul class="dd-list" id="retryList" role="listbox" aria-labelledby="retryLbl"></ul>
+        </div>
+      </div>
+
+      <!-- 2. Iniciar com o Windows -->
+      <div class="setting-row">
+        <div class="setting-label-group">
+          <div class="setting-ico"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg></div>
+          <div class="setting-texts">
+            <div class="setting-title-line">
+              <label for="autostart">Iniciar com o Windows</label>
+              <button class="help" aria-label="Ajuda: Iniciar com o Windows" aria-describedby="autostartHint"></button>
+              <span class="tip" role="tooltip" id="autostartHint"></span>
+            </div>
+            <span class="setting-desc">Abre automaticamente no login</span>
+          </div>
+        </div>
+        <span class="switch"><input type="checkbox" id="autostart" role="switch"><i></i></span>
+      </div>
+
+      <!-- 3. Minimização de janela -->
+      <div class="setting-row">
+        <div class="setting-label-group">
+          <div class="setting-ico"><svg viewBox="0 0 24 24"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/></svg></div>
+          <div class="setting-texts">
+            <div class="setting-title-line">
+              <label for="startMinimized">Minimização de janela</label>
+              <button class="help" aria-label="Ajuda: Minimização de janela" aria-describedby="tipMin"></button>
+              <span class="tip" role="tooltip" id="tipMin">Mantém o Spark sempre minimizado na barra de tarefas: ao abrir, se houver algo agendado e durante todas as verificações e reaberturas automáticas. Assim a janela nunca pula na frente da tela nem rouba o foco caso você esteja jogando ou trabalhando.</span>
+            </div>
+            <span class="setting-desc">Minimizado ao abrir e em todos os agendamentos, sem atrapalhar jogos ou trabalho</span>
+          </div>
+        </div>
+        <span class="switch"><input type="checkbox" id="startMinimized" role="switch"><i></i></span>
+      </div>
+
+    </div>
+
+    <!-- Card Explicativo: Algoritmo da 2ª Carta (Padrão) -->
+    <section class="algo-card js-luz" aria-label="Algoritmo da 2ª Carta">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <div class="algo-head">
+        <div class="algo-title-group">
+          <div class="algo-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          </div>
+          <span class="algo-title">Algoritmo da 2ª Carta</span>
+        </div>
+        <span class="algo-badge">Padrão ativo</span>
+      </div>
+      <div class="algo-steps" aria-hidden="true">
+        <span class="algo-step step-skip">1ª <b>✕ Pula</b></span>
+        <span class="algo-arrow">→</span>
+        <span class="algo-step step-like">2ª <b>♥ Curte</b></span>
+        <span class="algo-arrow">→</span>
+        <span class="algo-step step-reload">↻ Recarrega</span>
+      </div>
+      <p class="algo-desc">
+        Após abrir ou recarregar o Tinder, perfis que já curtiram você costumam aparecer na <strong>2ª carta</strong>. Por padrão, o Spark pula a 1ª e curte a 2ª para maximizar a chance de match.
+      </p>
+    </section>
+  </div>
+
+  <!-- Aba Atividade (Logs) -->
+  <div class="tab-panel" id="paneLogs" role="tabpanel">
+    <div class="logs-container">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <section class="logs" id="logs" aria-label="Atividade" tabindex="0"></section>
+    </div>
+
+    <!-- Card Explicativo: Agendamento Automático & Zero Processamento -->
+    <section class="algo-card sched-card js-luz" aria-label="Agendamento Automático">
+      <span class="beam" aria-hidden="true"><i></i></span>
+      <div class="algo-head">
+        <div class="algo-title-group">
+          <div class="algo-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <span class="algo-title">Agendamento Inteligente</span>
+        </div>
+        <span class="algo-badge" id="schedBadge">Zero CPU · Ativo</span>
+      </div>
+      <div class="algo-steps" aria-hidden="true">
+        <span class="algo-step step-skip">Sem likes <b>⏻ Fecha</b></span>
+        <span class="algo-arrow">→</span>
+        <span class="algo-step step-like">Agenda <b id="schedIntervalTxt">15 min</b></span>
+        <span class="algo-arrow">→</span>
+        <span class="algo-step step-reload">⚡ Reabre</span>
+      </div>
+      <p class="algo-desc">
+        Ao esgotar as curtidas, o Spark agenda a volta no Windows e <strong>fecha por completo (0% de CPU e RAM)</strong>. Mesmo se o <strong>computador desligar</strong>, o agendamento continua salvo e retoma ou reagenda sozinho ao ligar o PC.
+      </p>
+    </section>
+  </div>
+
+</aside>
+
+<main>
+  <div class="browser">
+    <span class="beam" aria-hidden="true"><i></i></span>
+    <webview id="web" src="https://tinder.com/app/recs" partition="persist:tinder" allowpopups></webview>
+  </div>
+</main>
+
+<!-- 09 · Elementos do Cursor Personalizado: fora do <aside>, senão o backdrop-filter dele vira o referencial do position:fixed e o overflow o recorta/desloca com a rolagem -->
+<div id="sparkCursor" aria-hidden="true">
+  <span class="js-cursor-ponto" id="cursorPonto"></span>
+  <span class="js-cursor-anel" id="cursorAnel"></span>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id)
+  const COLORS = {
+    running: 'var(--pink)',
+    waiting: 'var(--warning)',
+    paused: 'var(--idle)',
+    login: 'var(--pink-hi)',
+    error: 'var(--error)',
+    idle: 'var(--idle)'
+  }
+  let next = 0, previousLogCount = 0, ultimoLog
+  const reduzir = matchMedia('(prefers-reduced-motion: reduce)')
+  setTimeout(() => document.body.classList.add('pronto'), 800) // fim da entrada em cascata
+
+  // número que subiu: o novo valor sobe e entra em foco (só quando aumenta; a 1ª carga entra parada)
+  function numero(id, n) {
+    const el = $(id), antes = el.dataset.v
+    el.dataset.v = n
+    if (antes !== undefined && Number(antes) === n) return
+    el.textContent = n.toLocaleString('pt-BR')
+    if (antes !== undefined && n > Number(antes)) el.animate(reduzir.matches ? [{ opacity: 0.4 }, { opacity: 1 }]
+      : [{ transform: 'translateY(0.3em)', opacity: 0.3, filter: 'blur(2px)' }, { transform: 'none', opacity: 1, filter: 'none' }],
+      { duration: 260, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' })
+  }
+  // texto que mudou: o desfoque curto disfarça a troca
+  function trocar(el, txt) {
+    if (el.textContent === txt) return
+    el.textContent = txt
+    el.animate([{ opacity: 0.2, filter: 'blur(2px)' }, { opacity: 1, filter: 'none' }], { duration: 220, easing: 'ease-out' })
+  }
+
+  // Sistema de Abas (Ajustes / Atividade)
+  const tabBtnSettings = $('tabBtnSettings')
+  const tabBtnLogs = $('tabBtnLogs')
+  const paneSettings = $('paneSettings')
+  const paneLogs = $('paneLogs')
+  const logDot = $('logDot')
+
+  tabBtnSettings.onclick = () => {
+    tabBtnSettings.classList.add('active')
+    tabBtnLogs.classList.remove('active')
+    paneSettings.classList.add('active')
+    paneLogs.classList.remove('active')
+    tabBtnSettings.setAttribute('aria-selected', 'true')
+    tabBtnLogs.setAttribute('aria-selected', 'false')
+  }
+
+  tabBtnLogs.onclick = () => {
+    tabBtnLogs.classList.add('active')
+    tabBtnSettings.classList.remove('active')
+    paneLogs.classList.add('active')
+    paneSettings.classList.remove('active')
+    tabBtnLogs.setAttribute('aria-selected', 'true')
+    tabBtnSettings.setAttribute('aria-selected', 'false')
+    logDot.classList.remove('show')
+  }
+
+  function render(s) {
+    const code = s.status.code, busy = code === 'running'
+    document.body.dataset.status = code // o CSS acende o cartão e a moldura conforme o status
+    $('dot').style.setProperty('--c', COLORS[code] || COLORS.idle)
+    $('dot').classList.toggle('live', busy)
+    trocar($('status'), s.status.text.split(' · ')[0])
+    next = s.status.next
+    tick()
+    $('enabled').checked = s.enabled
+    $('autoCard').classList.toggle('on', s.enabled)
+
+    numero('today', s.likesToday)
+    numero('matches', s.matches)
+    numero('total', s.likesTotal)
+
+    // botão principal: desligado com o Automático pausado; "Verificando…" enquanto um ciclo roda
+    $('check').disabled = !s.enabled || busy
+    $('check').classList.toggle('busy', s.enabled && busy)
+    $('check').setAttribute('aria-busy', String(s.enabled && busy))
+    $('checkText').textContent = s.enabled && busy ? 'Verificando…' : 'Verificar agora'
+
+    // ajustes
+    $('retryMin').value = String(s.retryMin)
+    syncRetry()
+    $('autostart').checked = s.autostart
+    $('startMinimized').checked = s.startMinimized
+    $('autostartHint').textContent = s.startMinimized
+      ? 'Abre ao entrar no Windows, minimizado na barra de tarefas e sem interromper sua tela nos agendamentos.'
+      : 'Abre ao entrar no Windows, só na bandeja (sem janela). Ative “Minimização de janela” para mantê-lo sempre minimizado na barra de tarefas e em todos os agendamentos.'
+
+    // card de agendamento na aba Atividade: sincronizado com o Modo Automático, intervalo e próxima tentativa
+    const schedBadge = $('schedBadge')
+    if (schedBadge) {
+      if (!s.enabled) {
+        schedBadge.textContent = 'Pausado'
+        schedBadge.className = 'algo-badge paused'
+      } else if (s.status.next && s.status.next > Date.now()) {
+        const at = new Date(s.status.next).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        schedBadge.textContent = `Agendado · ${at}`
+        schedBadge.className = 'algo-badge waiting'
+      } else {
+        schedBadge.textContent = 'Zero CPU · Ativo'
+        schedBadge.className = 'algo-badge'
+      }
+    }
+
+    // indicador de novos logs se estiver na aba de ajustes
+    if (s.logs.length > previousLogCount && !paneLogs.classList.contains('active')) {
+      logDot.classList.add('show')
+    }
+    previousLogCount = s.logs.length
+
+    // atividade: "19/10, 12:49  Pausado" → horário discreto + mensagem; só a linha que acabou de chegar entra animada
+    const novo = ultimoLog !== undefined && s.logs[0] !== ultimoLog
+    ultimoLog = s.logs[0]
+    $('logs').replaceChildren(...(s.logs.length ? s.logs.map((l, i) => {
+      const [when, ...msg] = l.split('  '), row = Object.assign(document.createElement('div'), { className: novo && i === 0 ? 'log novo' : 'log' })
+      row.append(
+        Object.assign(document.createElement('time'), { textContent: when.split(', ').pop(), title: when }),
+        Object.assign(document.createElement('span'), { textContent: msg.join('  ') })
+      )
+      return row
+    }) : [Object.assign(document.createElement('div'), {
+      className: 'empty',
+      innerHTML: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Sem atividade registrada ainda'
+    })]))
+  }
+
+  function tick() {
+    const left = Math.max(0, next - Date.now())
+    if (!next || !left) {
+      $('sub').textContent = ''
+      $('subTimer').style.display = 'none'
+      return
+    }
+    const total = Math.ceil(left / 1000), h = Math.floor(total / 3600), m = Math.floor(total / 60) % 60, sec = total % 60
+    $('sub').textContent = `${h ? h + ':' + String(m).padStart(2, '0') : m}:${String(sec).padStart(2, '0')}`
+    $('sub').title = 'Próxima verificação'
+    $('subTimer').style.display = 'flex'
+  }
+  setInterval(tick, 1000)
+
+  spark.state().then(render)
+  spark.onState(render)
+  $('enabled').onchange = e => spark.toggle(e.target.checked)
+  $('check').onclick = () => spark.check()
+  // "Verificar agora": uma faísca de luz sai do ponto do clique
+  $('check').addEventListener('pointerdown', e => {
+    const b = e.currentTarget
+    if (b.disabled || reduzir.matches) return
+    const r = b.getBoundingClientRect(), f = Object.assign(document.createElement('span'), { className: 'faisca' })
+    f.style.left = (e.clientX - r.left) + 'px'
+    f.style.top = (e.clientY - r.top) + 'px'
+    b.append(f)
+    f.animate({ transform: ['scale(0.15)', 'scale(1)'] }, { duration: 500, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' })
+    f.animate({ opacity: [1, 0] }, { duration: 500, easing: 'linear' }).onfinish = () => f.remove() // a luz some por igual enquanto a onda abre
+  })
+  $('retryMin').onchange = e => spark.set('retryMin', Number(e.target.value))
+
+  // Seletor de intervalo (lista própria; o <select> escondido guarda o valor e dispara o "change" de sempre)
+  const sel = $('retryMin'), dd = $('retryDd'), ddBtn = $('retryBtn'), ddList = $('retryList')
+  let ativo = -1, porTeclado = false
+  const itens = [...sel.options].map((o, i) => {
+    const li = document.createElement('li')
+    li.className = 'dd-opt'; li.id = 'retryOpt' + i; li.setAttribute('role', 'option')
+    li.innerHTML = `<span></span><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="5 12.5 10 17.5 19 7"/></svg>`
+    li.firstChild.textContent = o.text
+    li.onclick = () => escolher(i)
+    li.onpointermove = () => { if (ativo !== i) marcar(i) }
+    return li
+  })
+  ddList.append(...itens)
+  function syncRetry() {
+    const label = sel.selectedOptions[0]?.text ?? ''
+    $('retryTxt').textContent = label
+    if ($('schedIntervalTxt')) $('schedIntervalTxt').textContent = label
+    itens.forEach((li, i) => li.setAttribute('aria-selected', String(i === sel.selectedIndex)))
+  }
+  sel.addEventListener('change', syncRetry)
+  const aberto = () => dd.classList.contains('open')
+  function marcar(i) {
+    ativo = Math.max(0, Math.min(itens.length - 1, i))
+    itens.forEach((li, k) => li.classList.toggle('ativo', k === ativo))
+    ddBtn.setAttribute('aria-activedescendant', itens[ativo].id)
+  }
+  function abrir(teclado) {
+    porTeclado = teclado
+    dd.toggleAttribute('data-kb', teclado)
+    dd.classList.add('open'); ddBtn.setAttribute('aria-expanded', 'true')
+    marcar(sel.selectedIndex)
+  }
+  function fechar(foco) {
+    dd.classList.remove('open'); ddBtn.setAttribute('aria-expanded', 'false'); ddBtn.removeAttribute('aria-activedescendant')
+    if (foco) ddBtn.focus()
+  }
+  function escolher(i) {
+    if (sel.selectedIndex !== i) { sel.selectedIndex = i; sel.dispatchEvent(new Event('change')) }
+    fechar(true)
+  }
+  ddBtn.addEventListener('click', e => aberto() ? fechar() : abrir(e.detail === 0)) // detail 0 = Enter/Espaço
+  ddBtn.addEventListener('keydown', e => {
+    const k = e.key
+    if (!aberto()) {
+      if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); abrir(true) }
+      return
+    }
+    if (k === 'ArrowDown') marcar(ativo + 1)
+    else if (k === 'ArrowUp') marcar(ativo - 1)
+    else if (k === 'Home') marcar(0)
+    else if (k === 'End') marcar(itens.length - 1)
+    else if (k === 'Enter' || k === ' ') { e.preventDefault(); escolher(ativo); return }
+    else if (k === 'Escape') { e.stopPropagation(); fechar(true); return }
+    else if (k === 'Tab') { fechar(); return }
+    else return
+    e.preventDefault()
+  })
+  ddBtn.addEventListener('keyup', e => { if (e.key === ' ') e.preventDefault() }) // o Espaço que escolheu não pode "clicar" de novo
+  document.addEventListener('pointerdown', e => { if (aberto() && !dd.contains(e.target)) fechar() })
+  window.addEventListener('blur', () => fechar())
+  $('autostart').onchange = e => spark.set('autostart', e.target.checked)
+  $('startMinimized').onchange = e => spark.set('startMinimized', e.target.checked)
+
+  // abas: setas esquerda/direita trocam de aba (padrão ARIA de tabs)
+  document.querySelector('.segmented-nav').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    const other = document.activeElement === tabBtnSettings ? tabBtnLogs : tabBtnSettings
+    document.querySelector('aside').dataset.teclado = '' // ação de teclado não anima
+    other.click(); other.focus(); e.preventDefault()
+  })
+  document.querySelector('aside').addEventListener('pointerdown', e => delete e.currentTarget.dataset.teclado)
+
+  // ajuda: Esc fecha
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.activeElement?.classList.contains('help')) document.activeElement.blur()
+  })
+
+  const handleWin = (id, act) => {
+    const btn = $(id)
+    if (!btn) return
+    btn.onclick = e => { e?.stopPropagation(); spark.win(act) }
+  }
+  handleWin('wClose', 'close')
+  handleWin('quit', 'quit')
+  handleWin('wMin', 'min')
+  handleWin('wZoom', 'zoom')
+  spark.onMaximized(m => $('wZoom').title = m ? 'Restaurar' : 'Maximizar')
+  spark.onFocused(f => document.body.classList.toggle('blurred', !f))
+
+  const web = $('web')
+  if (web) {
+    web.addEventListener('render-process-gone', () => {
+      setTimeout(() => { try { web.reload() } catch {} }, 1500)
+    })
+  }
+  if ($('back')) $('back').onclick = () => web?.canGoBack() && web.goBack()
+  if ($('reload')) $('reload').onclick = () => web?.reload()
+
+  // 12 · Luz que segue o mouse (Spotlight Hover)
+  document.querySelectorAll('.js-luz').forEach(el => {
+    el.addEventListener('mousemove', ev => {
+      const r = el.getBoundingClientRect()
+      el.style.setProperty('--x', (ev.clientX - r.left) + 'px')
+      el.style.setProperty('--y', (ev.clientY - r.top) + 'px')
+    })
+  })
+
+  // 09 · Cursor personalizado: o ponto fica exatamente sob o mouse e o anel chega depois (inércia).
+  // Os elementos moram no <body>, fora do <aside>: dentro dele o backdrop-filter vira o referencial do position:fixed.
+  // O cursor nativo só some (html.js-cursor-on) enquanto o personalizado está visível. Em áreas de arrastar a janela
+  // a página não recebe o mouse: aí o personalizado se esconde e o nativo aparece, em vez de ficar parado.
+  const asideArea = document.querySelector('aside')
+  const cursorPonto = $('cursorPonto')
+  const cursorAnel = $('cursorAnel')
+  if (asideArea && cursorPonto && cursorAnel) {
+    const INTERATIVO = 'button, input, select, a, [role="button"], [role="switch"], [role="option"], .tab-pill, .help, .switch'
+    const alvo = { x: 0, y: 0 }, anel = { x: 0, y: 0 }
+    let dentro = false, clicando = false, sobreInterativo = false, raf = 0, ultimo = 0
+
+    const escala = () => { cursorAnel.style.scale = clicando ? 0.75 : sobreInterativo ? 1.3 : 1 }
+    const posAnel = () => { cursorAnel.style.translate = `${anel.x - 18}px ${anel.y - 18}px` }
+    const sobre = el => {
+      sobreInterativo = !!el?.closest?.(INTERATIVO)
+      cursorAnel.classList.toggle('hovering', sobreInterativo)
+      cursorPonto.classList.toggle('hovering', sobreInterativo)
+      escala()
+    }
+    function mostrar() {
+      dentro = true
+      document.documentElement.classList.add('js-cursor-on')
+      cursorPonto.style.opacity = cursorAnel.style.opacity = '1'
+    }
+    function esconder() {
+      dentro = clicando = false
+      document.documentElement.classList.remove('js-cursor-on')
+      cursorPonto.style.opacity = cursorAnel.style.opacity = '0'
+      sobre(null)
+    }
+    function seguir(agora) {
+      raf = 0
+      const dt = Math.min(Math.max(agora - ultimo, 0), 50)
+      ultimo = agora
+      const k = 1 - Math.pow(0.8, dt / 16.7) // 20% do caminho por quadro a 60 Hz, igual em qualquer taxa de atualização
+      anel.x += (alvo.x - anel.x) * k
+      anel.y += (alvo.y - anel.y) * k
+      if (Math.hypot(alvo.x - anel.x, alvo.y - anel.y) < 0.1) { anel.x = alvo.x; anel.y = alvo.y } else raf = requestAnimationFrame(seguir)
+      posAnel()
+    }
+
+    asideArea.addEventListener('mousemove', ev => {
+      // escondido + mesma posição = movimento sintético (o Chromium emite um ao devolver o mouse à página), não o usuário mexendo
+      if (!dentro && ev.clientX === alvo.x && ev.clientY === alvo.y) return
+      alvo.x = ev.clientX
+      alvo.y = ev.clientY
+      cursorPonto.style.transform = `translate(${alvo.x - 4}px, ${alvo.y - 4}px)` // sem esperar o quadro: o ponto nunca atrasa
+      if (!dentro) { anel.x = alvo.x; anel.y = alvo.y; posAnel(); mostrar() }
+      sobre(ev.target)
+      if (!raf) { ultimo = performance.now(); raf = requestAnimationFrame(seguir) }
+    })
+    asideArea.addEventListener('mouseleave', esconder)
+    window.addEventListener('blur', esconder)
+    asideArea.addEventListener('mousedown', ev => {
+      clicando = true
+      escala()
+    })
+    window.addEventListener('mouseup', () => { clicando = false; escala() })
+    asideArea.addEventListener('scroll', () => { if (dentro) sobre(document.elementFromPoint(alvo.x, alvo.y)) }, true) // rolar sem mexer o mouse troca o que está embaixo dele
+  }
+</script>
+</body>
+</html>

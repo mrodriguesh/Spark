@@ -1,0 +1,34 @@
+# Dependências
+node_modules/
+
+# Builds e binários gerados
+dist/
+
+# Logs e arquivos locais temporários
+*.log
+*.log.*
+*.tmp
+*.bak
+*.corrompido
+boot-debug.txt
+run_out.txt
+
+# Backups locais antigos
+backups/
+
+# Sistema operacional
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+
+# Segredos e configuracoes locais (nunca publicar)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+.claude/settings.local.json
